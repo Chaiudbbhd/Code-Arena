@@ -1,5 +1,8 @@
 # 💖 Welcome to the Code Arena – UI/UX Showcase
 
+![Code Arena UI Screenshot](https://i.ibb.co/HD9H4vsk/Screenshot-2025-08-06-at-3-52-40-PM.png)
+
+
 ## 🧠 Project Overview
 
 Welcome to **Code Arena**, a sleek, modern front-end experience built using the latest web technologies. This project is not just a static UI — it's a **visionary platform** designed for **competitive environments** like coding challenges, quizzes, and online tests conducted between friends or institutions.
