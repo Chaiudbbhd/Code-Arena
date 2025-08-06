@@ -1,73 +1,64 @@
-# Welcome to your Lovable project
+# 💖 Welcome to the Code Arena – UI/UX Showcase
 
-## Project info
+## 🧠 Project Overview
 
-**URL**: https://lovable.dev/projects/2bc13757-a3ae-4bcd-ac76-e66cc4dbc91d
+Welcome to **Code Arena**, a sleek, modern front-end experience built using the latest web technologies. This project is not just a static UI — it's a **visionary platform** designed for **competitive environments** like coding challenges, quizzes, and online tests conducted between friends or institutions.
 
-## How can I edit this code?
+🎯 **Purpose**:
+> This app is built **exclusively for conducting competitive challenges** — ensuring fairness, preventing cheating, and creating a smooth user experience.
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## 🔐 Intelligent Security-First Design
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2bc13757-a3ae-4bcd-ac76-e66cc4dbc91d) and start prompting.
+**Code Arena** stands out with **advanced security controls** baked into the frontend (and to be enhanced further in the backend), specifically designed for competition integrity:
 
-Changes made via Lovable will be committed automatically to this repo.
+- ❌ **No Copy-Paste**: All keyboard events like `Ctrl+C`, `Ctrl+V`, or `Right-Click > Copy` are disabled to prevent content leakage.
+- 🛑 **Tab Switch Detection**: If a user tries to switch tabs, minimize the window, or open DevTools, the platform automatically tracks the event.
+- ⚠️ **Auto-Disqualification**: Upon detecting any suspicious or unauthorized activity (like switching tabs multiple times or resizing the screen), the user is **instantly disqualified** from the session.
+- 👁️ **Tamper-Resistant UI**: Ensures users remain focused in a full-screen secure environment (kiosk-style experience).
 
-**Use your preferred IDE**
+🔒 These features are part of the UI/UX layer and will be enforced even more robustly in the upcoming **backend rollout**.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🌐 Live Preview
 
-Follow these steps:
+🚀 **Live URL**: [code-arena-three.vercel.app](https://code-arena-three.vercel.app)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+🛠️ **Status**:  
+> 💡 This is currently a **UI/UX prototype**. The **full-fledged backend integration**, user authentication, real-time monitoring, and analytics are under development and coming soon!
+
+---
+
+## ⚙️ Tech Stack
+
+This project is powered by:
+
+- ⚡ **Vite** — Lightning-fast development environment
+- 🧬 **TypeScript** — For static typing and clean architecture
+- ⚛️ **React** — Front-end library for modular UI
+- 🎨 **Tailwind CSS** — Modern, utility-first styling
+- 🧩 **shadcn/ui** — Accessible and beautifully styled components
+
+---
+
+## 🛠️ Getting Started (Local Development)
+
+> Make sure you have [Node.js](https://nodejs.org/en) and [npm](https://www.npmjs.com/) installed.  
+> It's recommended to install Node via [nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+
+### 👨‍💻 Clone and Run the Project
+
+```bash
+# 1️⃣ Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# 2️⃣ Navigate into the project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 3️⃣ Install the required dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4️⃣ Start the development server
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/2bc13757-a3ae-4bcd-ac76-e66cc4dbc91d) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
