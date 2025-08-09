@@ -21,22 +21,71 @@ export function AuthCard() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+  // ✅ Client-side validation for signup
+  if (!isLogin && formData.password !== formData.confirmPassword) {
+    toast({
+      title: "Password mismatch",
+      description: "Passwords do not match.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+
+    const response = await fetch(`http://localhost:4000${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await response.json();
+    setIsLoading(false);
+
+    // ✅ If backend sends an error message, handle it before redirect
+    if (!response.ok || data.success === false) {
       toast({
-        title: isLogin ? "Welcome back!" : "Account created!",
-        description: isLogin
-          ? "You've successfully logged in."
-          : "Your account has been created successfully.",
+        title: "Error",
+        description: data.message || "Invalid email or password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isLogin) {
+      // ✅ Save token if provided
+      if (data.token) localStorage.setItem("token", data.token);
+
+      toast({
+        title: "Welcome back!",
+        description: "Login successful!",
       });
       navigate("/dashboard");
-    }, 1500);
-  };
+    } else {
+      toast({
+        title: "Account created!",
+        description: "Please log in with your new credentials.",
+      });
+      setIsLogin(true); // Switch to login form
+      setFormData({ email: "", password: "", confirmPassword: "" }); // Clear form
+    }
+  } catch (error) {
+    console.error(error);
+    setIsLoading(false);
+    toast({
+      title: "Error",
+      description: "Network error, please try again later.",
+      variant: "destructive",
+    });
+  }
+};
+
 
   const handleOAuth = (provider: "google" | "github") => {
     window.location.href = `http://localhost:4000/auth/${provider}`;
