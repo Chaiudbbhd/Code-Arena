@@ -8,6 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import authBg from "@/assets/auth-bg.jpg";
 
+// ✅ Base API URL (auto-switch between dev & prod)
+const API_BASE =
+  import.meta.env.MODE === "development"
+    ? "http://localhost:4002" // Backend dev server
+    : "https://code-battle-backend-vq5s.onrender.com"; // Change this for prod
+
 export function AuthCard() {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,74 +27,70 @@ export function AuthCard() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  // ✅ Client-side validation for signup
-  if (!isLogin && formData.password !== formData.confirmPassword) {
-    toast({
-      title: "Password mismatch",
-      description: "Passwords do not match.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
-
-    const response = await fetch(`http://localhost:4000${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-
-    const data = await response.json();
-    setIsLoading(false);
-
-    // ✅ If backend sends an error message, handle it before redirect
-    if (!response.ok || data.success === false) {
+    if (!isLogin && formData.password !== formData.confirmPassword) {
       toast({
-        title: "Error",
-        description: data.message || "Invalid email or password.",
+        title: "Password mismatch",
+        description: "Passwords do not match.",
         variant: "destructive",
       });
       return;
     }
 
-    if (isLogin) {
-      // ✅ Save token if provided
-      if (data.token) localStorage.setItem("token", data.token);
+    setIsLoading(true);
 
-      toast({
-        title: "Welcome back!",
-        description: "Login successful!",
+    try {
+      const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
-      navigate("/dashboard");
-    } else {
+
+      const data = await response.json();
+      setIsLoading(false);
+
+      if (!response.ok || data.success === false) {
+        toast({
+          title: "Error",
+          description: data.message || "Invalid email or password.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (isLogin) {
+        if (data.token) localStorage.setItem("token", data.token);
+
+        toast({
+          title: "Welcome back!",
+          description: "Login successful!",
+        });
+        navigate("/dashboard");
+      } else {
+        toast({
+          title: "Account created!",
+          description: "Please log in with your new credentials.",
+        });
+        setIsLogin(true);
+        setFormData({ email: "", password: "", confirmPassword: "" });
+      }
+    } catch (error) {
+      console.error(error);
+      setIsLoading(false);
       toast({
-        title: "Account created!",
-        description: "Please log in with your new credentials.",
+        title: "Error",
+        description: "Network error, please try again later.",
+        variant: "destructive",
       });
-      setIsLogin(true); // Switch to login form
-      setFormData({ email: "", password: "", confirmPassword: "" }); // Clear form
     }
-  } catch (error) {
-    console.error(error);
-    setIsLoading(false);
-    toast({
-      title: "Error",
-      description: "Network error, please try again later.",
-      variant: "destructive",
-    });
-  }
-};
-
+  };
 
   const handleOAuth = (provider: "google" | "github") => {
-    window.location.href = `http://localhost:4000/auth/${provider}`;
+    window.location.href = `${API_BASE}/auth/${provider}`;
   };
 
   return (
@@ -123,7 +125,6 @@ export function AuthCard() {
 
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
@@ -142,10 +143,10 @@ export function AuthCard() {
               />
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
               <Label htmlFor="password" className="flex items-center gap-2">
-                💰 Password
+                <Lock className="h-4 w-4" />
+                Password
               </Label>
               <div className="relative">
                 <Input
@@ -173,14 +174,10 @@ export function AuthCard() {
               </div>
             </div>
 
-            {/* Confirm Password Field (Only on Sign Up) */}
             {!isLogin && (
               <div className="space-y-2">
-                <Label
-                  htmlFor="confirmPassword"
-                  className="flex items-center gap-2"
-                >
-                  💰 Confirm Password
+                <Label htmlFor="confirmPassword" className="flex items-center gap-2">
+                  Confirm Password
                 </Label>
                 <div className="relative">
                   <Input
@@ -199,9 +196,7 @@ export function AuthCard() {
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
-                    }
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
                   >
                     {showConfirmPassword ? (
@@ -214,7 +209,6 @@ export function AuthCard() {
               </div>
             )}
 
-            {/* Submit Button */}
             <Button
               type="submit"
               variant="accent"
@@ -230,7 +224,6 @@ export function AuthCard() {
             </Button>
           </form>
 
-          {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
@@ -242,7 +235,6 @@ export function AuthCard() {
             </div>
           </div>
 
-          {/* OAuth Buttons */}
           <Button
             variant="outline"
             size="lg"
@@ -263,7 +255,6 @@ export function AuthCard() {
             Continue with Google
           </Button>
 
-          {/* Toggle Between Login & Signup */}
           <div className="text-center">
             <button
               type="button"
@@ -276,7 +267,6 @@ export function AuthCard() {
             </button>
           </div>
 
-          {/* Forgot Password */}
           {isLogin && (
             <div className="text-center">
               <button
