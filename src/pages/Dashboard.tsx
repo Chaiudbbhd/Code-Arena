@@ -4,39 +4,55 @@ import { RoomCard } from "@/components/dashboard/RoomCard";
 import { CreateRoomModal } from "@/components/dashboard/CreateRoomModal";
 import { JoinRoomModal } from "@/components/dashboard/JoinRoomModal";
 import { Input } from "@/components/ui/input";
-import { Search, Sparkles, Trophy, Clock, Users as UsersIcon } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { socket } from "@/socket";
 import axios from "axios";
 
-// This matches what your backend returns
-interface ApiRoom {
-  _id: string;
-  name: string;
-  host?: string;
-  status?: "waiting" | "live" | "finished";
-  players?: string[];
-  maxPlayers?: number;
-  difficulty?: "Easy" | "Medium" | "Hard";
-  platforms?: string[];
+// This matches what RoomCard expects
+interface RoomCardData {
+  id: string;
+  title: string;
+  host: string;
   hostAvatar?: string;
+  participants: number;
+  maxParticipants: number;
+  status: "waiting" | "live" | "finished";
+  difficulty: "Easy" | "Medium" | "Hard";
   timeLeft?: string;
+  platforms: string[];
 }
 
 export default function Dashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [rooms, setRooms] = useState<ApiRoom[]>([]);
+  const [rooms, setRooms] = useState<RoomCardData[]>([]);
 
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const res = await axios.get<ApiRoom[]>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/room`
-        );
-        setRooms(res.data);
+        const res = await axios.get<{
+          _id: string;
+          name: string;
+          players: string[];
+        }[]>(`${import.meta.env.VITE_BACKEND_URL}/api/room`);
+
+        const transformedRooms: RoomCardData[] = res.data.map((room) => ({
+          id: room._id,
+          title: room.name,
+          host: room.players?.[0] || "Unknown Host",
+          hostAvatar: undefined, // Replace with actual URL if available
+          participants: room.players?.length ?? 0,
+          maxParticipants: 10, // Change if backend sends max
+          status: "waiting", // Default until backend supports it
+          difficulty: "Easy", // Or derive from backend data
+          timeLeft: undefined,
+          platforms: ["Web"], // Example static platform
+        }));
+
+        setRooms(transformedRooms);
       } catch (err) {
         console.error("Error fetching rooms:", err);
       }
@@ -44,13 +60,37 @@ export default function Dashboard() {
 
     fetchRooms();
 
-    socket.on("roomCreated", (newRoom: ApiRoom) => {
-      setRooms((prev) => [newRoom, ...prev]);
+    socket.on("roomCreated", (newRoom: { _id: string; name: string; players: string[] }) => {
+      const transformed: RoomCardData = {
+        id: newRoom._id,
+        title: newRoom.name,
+        host: newRoom.players?.[0] || "Unknown Host",
+        hostAvatar: undefined,
+        participants: newRoom.players?.length ?? 0,
+        maxParticipants: 10,
+        status: "waiting",
+        difficulty: "Easy",
+        timeLeft: undefined,
+        platforms: ["Web"],
+      };
+      setRooms((prev) => [transformed, ...prev]);
     });
 
-    socket.on("roomUpdated", (updatedRoom: ApiRoom) => {
+    socket.on("roomUpdated", (updatedRoom: { _id: string; name: string; players: string[] }) => {
+      const transformed: RoomCardData = {
+        id: updatedRoom._id,
+        title: updatedRoom.name,
+        host: updatedRoom.players?.[0] || "Unknown Host",
+        hostAvatar: undefined,
+        participants: updatedRoom.players?.length ?? 0,
+        maxParticipants: 10,
+        status: "waiting",
+        difficulty: "Easy",
+        timeLeft: undefined,
+        platforms: ["Web"],
+      };
       setRooms((prev) =>
-        prev.map((r) => (r._id === updatedRoom._id ? updatedRoom : r))
+        prev.map((r) => (r.id === updatedRoom._id ? transformed : r))
       );
     });
 
@@ -61,11 +101,11 @@ export default function Dashboard() {
   }, []);
 
   const handleJoinRoom = (roomId: string) => {
-    const room = rooms.find(r => r._id === roomId);
+    const room = rooms.find(r => r.id === roomId);
     if (room) {
       toast({
         title: "Joining Room",
-        description: `Joining "${room.name}"...`,
+        description: `Joining "${room.title}"...`,
       });
       navigate(`/room/${roomId}`);
     }
@@ -80,8 +120,8 @@ export default function Dashboard() {
   };
 
   const filteredRooms = rooms.filter(room =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (room.host && room.host.toLowerCase().includes(searchQuery.toLowerCase()))
+    room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    room.host.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -108,7 +148,25 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-3">
               <JoinRoomModal onJoinRoom={handleJoinRoomByCode} />
-              <CreateRoomModal onCreateRoom={(newRoom) => setRooms([newRoom, ...rooms])} />
+              <CreateRoomModal
+                onCreateRoom={(newRoom) =>
+                  setRooms([
+                    {
+                      id: newRoom._id,
+                      title: newRoom.name,
+                      host: newRoom.players?.[0] || "Unknown Host",
+                      hostAvatar: undefined,
+                      participants: newRoom.players?.length ?? 0,
+                      maxParticipants: 10,
+                      status: "waiting",
+                      difficulty: "Easy",
+                      timeLeft: undefined,
+                      platforms: ["Web"],
+                    },
+                    ...rooms,
+                  ])
+                }
+              />
             </div>
           </div>
 
@@ -116,19 +174,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRooms.map((room) => (
               <RoomCard
-                key={room._id}
-                room={{
-                  id: room._id,
-                  title: room.name,
-                  host: room.host ?? "Unknown",
-                  hostAvatar: room.hostAvatar ?? "",
-                  participants: room.players?.length ?? 0,
-                  maxParticipants: room.maxPlayers ?? 10,
-                  status: room.status ?? "waiting",
-                  difficulty: room.difficulty ?? "Easy",
-                  timeLeft: room.timeLeft,
-                  platforms: room.platforms ?? [],
-                }}
+                key={room.id}
+                room={room}
                 onJoin={handleJoinRoom}
               />
             ))}
@@ -138,7 +185,9 @@ export default function Dashboard() {
             <div className="text-center py-12">
               <div className="text-muted-foreground text-lg mb-4">No rooms found</div>
               <p className="text-sm text-muted-foreground">
-                {searchQuery ? "Try adjusting your search" : "Create a new room to get started"}
+                {searchQuery
+                  ? "Try adjusting your search"
+                  : "Create a new room to get started"}
               </p>
             </div>
           )}
