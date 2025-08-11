@@ -24,7 +24,7 @@ const CodeArena = () => {
 
   // ✅ Establish socket connection
   useEffect(() => {
-    const newSocket = io("http://localhost:4000"); // change to your backend URL
+    const newSocket = io("https://code-battle-backend-vq5s.onrender.com"); // change to your backend URL
     setSocket(newSocket);
 
     return () => {

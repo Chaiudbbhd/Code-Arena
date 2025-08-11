@@ -1,84 +1,78 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { RoomCard } from "@/components/dashboard/RoomCard";
 import { CreateRoomModal } from "@/components/dashboard/CreateRoomModal";
 import { JoinRoomModal } from "@/components/dashboard/JoinRoomModal";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Filter, Sparkles, Trophy, Clock, Users as UsersIcon } from "lucide-react";
+import { Search, Sparkles, Trophy, Clock, Users as UsersIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { socket } from "@/socket";
+import axios from "axios";
+
+// This matches what your backend returns
+interface ApiRoom {
+  _id: string;
+  name: string;
+  host?: string;
+  status?: "waiting" | "live" | "finished";
+  players?: string[];
+  maxPlayers?: number;
+  difficulty?: "Easy" | "Medium" | "Hard";
+  platforms?: string[];
+  hostAvatar?: string;
+  timeLeft?: string;
+}
 
 export default function Dashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [rooms, setRooms] = useState([
-    {
-      id: "1",
-      title: "JavaScript Fundamentals Battle",
-      host: "Alice",
-      participants: 3,
-      maxParticipants: 6,
-      status: "waiting" as const,
-      difficulty: "Easy" as const,
-      timeLeft: "5m",
-      platforms: ["LeetCode", "GeeksforGeeks"]
-    },
-    {
-      id: "2", 
-      title: "Algorithm Speedrun Challenge",
-      host: "Bob",
-      participants: 4,
-      maxParticipants: 4,
-      status: "live" as const,
-      difficulty: "Hard" as const,
-      platforms: ["CodeChef", "Codeforces"]
-    },
-    {
-      id: "3",
-      title: "Data Structures Mastery",
-      host: "Charlie",
-      participants: 2,
-      maxParticipants: 8,
-      status: "waiting" as const,
-      difficulty: "Medium" as const,
-      timeLeft: "12m",
-      platforms: ["LeetCode"]
-    },
-    {
-      id: "4",
-      title: "Dynamic Programming Arena",
-      host: "Diana",
-      participants: 6,
-      maxParticipants: 6,
-      status: "finished" as const,
-      difficulty: "Hard" as const,
-      platforms: ["CodeChef", "GeeksforGeeks"]
-    }
-  ]);
+  const [rooms, setRooms] = useState<ApiRoom[]>([]);
 
-  const handleCreateRoom = (roomData: any) => {
-    setRooms([roomData, ...rooms]);
-  };
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const res = await axios.get<ApiRoom[]>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/room`
+        );
+        setRooms(res.data);
+      } catch (err) {
+        console.error("Error fetching rooms:", err);
+      }
+    };
+
+    fetchRooms();
+
+    socket.on("roomCreated", (newRoom: ApiRoom) => {
+      setRooms((prev) => [newRoom, ...prev]);
+    });
+
+    socket.on("roomUpdated", (updatedRoom: ApiRoom) => {
+      setRooms((prev) =>
+        prev.map((r) => (r._id === updatedRoom._id ? updatedRoom : r))
+      );
+    });
+
+    return () => {
+      socket.off("roomCreated");
+      socket.off("roomUpdated");
+    };
+  }, []);
 
   const handleJoinRoom = (roomId: string) => {
-    const room = rooms.find(r => r.id === roomId);
+    const room = rooms.find(r => r._id === roomId);
     if (room) {
       toast({
         title: "Joining Room",
-        description: `Joining "${room.title}"...`,
+        description: `Joining "${room.name}"...`,
       });
-      
-      // Navigate to room waiting page
       navigate(`/room/${roomId}`);
     }
   };
 
   const handleJoinRoomByCode = (roomCode: string) => {
-    // Navigate to room waiting page with the room code
     navigate(`/room/${roomCode}`);
-    
     toast({
       title: "Room Joined!",
       description: `Successfully joined room ${roomCode}`,
@@ -86,27 +80,19 @@ export default function Dashboard() {
   };
 
   const filteredRooms = rooms.filter(room =>
-    room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    room.host.toLowerCase().includes(searchQuery.toLowerCase())
+    room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (room.host && room.host.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
       <main className="pt-20 pb-8">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Sparkles className="h-8 w-8 text-accent" />
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                Code Battle Arena
-              </h1>
-            </div>
-            <p className="text-muted-foreground text-lg">
-              Join competitive coding battles or create your own challenges
-            </p>
+          <div className="mb-8 flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-accent" />
+            <h1 className="text-3xl font-bold">Code Battle Arena</h1>
           </div>
 
           {/* Actions Bar */}
@@ -122,61 +108,7 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-3">
               <JoinRoomModal onJoinRoom={handleJoinRoomByCode} />
-              <CreateRoomModal onCreateRoom={handleCreateRoom} />
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-accent/10">
-                  <Sparkles className="h-4 w-4 text-accent" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-accent">{rooms.length}</div>
-                  <div className="text-sm text-muted-foreground">Total Rooms</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-destructive/10">
-                  <Clock className="h-4 w-4 text-destructive" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-destructive">
-                    {rooms.filter(r => r.status === "live").length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Live Battles</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-success/10">
-                  <UsersIcon className="h-4 w-4 text-success" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-success">
-                    {rooms.reduce((acc, room) => acc + room.participants, 0)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Active Players</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-warning/10">
-                  <Trophy className="h-4 w-4 text-warning" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-warning">
-                    {rooms.filter(r => r.status === "finished").length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Completed</div>
-                </div>
-              </div>
+              <CreateRoomModal onCreateRoom={(newRoom) => setRooms([newRoom, ...rooms])} />
             </div>
           </div>
 
@@ -184,8 +116,19 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRooms.map((room) => (
               <RoomCard
-                key={room.id}
-                room={room}
+                key={room._id}
+                room={{
+                  id: room._id,
+                  title: room.name,
+                  host: room.host ?? "Unknown",
+                  hostAvatar: room.hostAvatar ?? "",
+                  participants: room.players?.length ?? 0,
+                  maxParticipants: room.maxPlayers ?? 10,
+                  status: room.status ?? "waiting",
+                  difficulty: room.difficulty ?? "Easy",
+                  timeLeft: room.timeLeft,
+                  platforms: room.platforms ?? [],
+                }}
                 onJoin={handleJoinRoom}
               />
             ))}
