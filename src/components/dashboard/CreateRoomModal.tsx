@@ -1,15 +1,29 @@
+// src/components/dashboard/CreateRoomModal.tsx
 import { useState } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Users, Clock, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CreateRoomModalProps {
-  onCreateRoom: (roomData: any) => void;
+  onCreateRoom?: (roomData: any) => void;
 }
 
 export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
@@ -19,7 +33,7 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
     difficulty: "",
     maxParticipants: "",
     timer: "",
-    platforms: [] as string[]
+    platforms: [] as string[],
   });
   const { toast } = useToast();
 
@@ -27,61 +41,68 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
     { id: "leetcode", name: "LeetCode" },
     { id: "gfg", name: "GeeksforGeeks" },
     { id: "codechef", name: "CodeChef" },
-    { id: "codeforces", name: "Codeforces" }
+    { id: "codeforces", name: "Codeforces" },
   ];
 
   const handlePlatformChange = (platformId: string, checked: boolean) => {
-    if (checked) {
-      setFormData({
-        ...formData,
-        platforms: [...formData.platforms, platformId]
-      });
-    } else {
-      setFormData({
-        ...formData,
-        platforms: formData.platforms.filter(p => p !== platformId)
-      });
-    }
+    setFormData((prev) => ({
+      ...prev,
+      platforms: checked
+        ? [...prev.platforms, platformId]
+        : prev.platforms.filter((p) => p !== platformId),
+    }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.platforms.length === 0) {
       toast({
         title: "Error",
         description: "Please select at least one platform.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    const roomData = {
-      id: Date.now().toString(),
-      title: formData.title,
-      host: "You",
-      participants: 1,
-      maxParticipants: parseInt(formData.maxParticipants),
-      status: "waiting" as const,
-      difficulty: formData.difficulty as "Easy" | "Medium" | "Hard",
-      platforms: formData.platforms,
-      timeLeft: `${formData.timer}m`
-    };
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/room/create`,
+        {
+          title: formData.title,
+          difficulty: formData.difficulty,
+          maxParticipants: parseInt(formData.maxParticipants),
+          timer: formData.timer,
+          platforms: formData.platforms,
+          host: "You", // Or get from auth/session
+        }
+      );
 
-    onCreateRoom(roomData);
-    setOpen(false);
-    setFormData({
-      title: "",
-      difficulty: "",
-      maxParticipants: "",
-      timer: "",
-      platforms: []
-    });
+      if (onCreateRoom) {
+        onCreateRoom(res.data.room); // immediate UI update if needed
+      }
 
-    toast({
-      title: "Room Created!",
-      description: "Your coding battle room has been created successfully.",
-    });
+      toast({
+        title: "Room Created!",
+        description: "Your coding battle room has been created successfully.",
+      });
+
+      setOpen(false);
+      setFormData({
+        title: "",
+        difficulty: "",
+        maxParticipants: "",
+        timer: "",
+        platforms: [],
+      });
+    } catch (error) {
+      console.error("Error creating room:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create room.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -107,7 +128,9 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
               id="title"
               placeholder="Enter room title"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
               required
               className="bg-secondary border-border focus:border-accent"
             />
@@ -121,7 +144,9 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
               </Label>
               <Select
                 value={formData.difficulty}
-                onValueChange={(value) => setFormData({ ...formData, difficulty: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, difficulty: value })
+                }
                 required
               >
                 <SelectTrigger className="bg-secondary border-border">
@@ -142,7 +167,9 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
               </Label>
               <Select
                 value={formData.maxParticipants}
-                onValueChange={(value) => setFormData({ ...formData, maxParticipants: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, maxParticipants: value })
+                }
                 required
               >
                 <SelectTrigger className="bg-secondary border-border">
@@ -165,7 +192,9 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
             </Label>
             <Select
               value={formData.timer}
-              onValueChange={(value) => setFormData({ ...formData, timer: value })}
+              onValueChange={(value) =>
+                setFormData({ ...formData, timer: value })
+              }
               required
             >
               <SelectTrigger className="bg-secondary border-border">
@@ -184,11 +213,16 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
             <Label>Platforms</Label>
             <div className="grid grid-cols-2 gap-3">
               {platforms.map((platform) => (
-                <div key={platform.id} className="flex items-center space-x-2">
+                <div
+                  key={platform.id}
+                  className="flex items-center space-x-2"
+                >
                   <Checkbox
                     id={platform.id}
                     checked={formData.platforms.includes(platform.id)}
-                    onCheckedChange={(checked) => handlePlatformChange(platform.id, checked as boolean)}
+                    onCheckedChange={(checked) =>
+                      handlePlatformChange(platform.id, checked as boolean)
+                    }
                   />
                   <Label
                     htmlFor={platform.id}

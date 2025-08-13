@@ -1,3 +1,4 @@
+// src/pages/Dashboard.tsx
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { RoomCard } from "@/components/dashboard/RoomCard";
@@ -9,20 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { socket } from "@/socket";
 import axios from "axios";
-
-// This matches what RoomCard expects
-interface RoomCardData {
-  id: string;
-  title: string;
-  host: string;
-  hostAvatar?: string;
-  participants: number;
-  maxParticipants: number;
-  status: "waiting" | "live" | "finished";
-  difficulty: "Easy" | "Medium" | "Hard";
-  timeLeft?: string;
-  platforms: string[];
-}
+import { transformRoom } from "@/utils/transformRoom";
+import { RoomCardData } from "@/types/room";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -31,77 +20,45 @@ export default function Dashboard() {
   const [rooms, setRooms] = useState<RoomCardData[]>([]);
 
   useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const res = await axios.get<{
-          _id: string;
-          name: string;
-          players: string[];
-        }[]>(`${import.meta.env.VITE_BACKEND_URL}/api/room`);
-
-        const transformedRooms: RoomCardData[] = res.data.map((room) => ({
-          id: room._id,
-          title: room.name,
-          host: room.players?.[0] || "Unknown Host",
-          hostAvatar: undefined, // Replace with actual URL if available
-          participants: room.players?.length ?? 0,
-          maxParticipants: 10, // Change if backend sends max
-          status: "waiting", // Default until backend supports it
-          difficulty: "Easy", // Or derive from backend data
-          timeLeft: undefined,
-          platforms: ["Web"], // Example static platform
-        }));
-
-        setRooms(transformedRooms);
-      } catch (err) {
+    // 1. Initial fetch from backend (REST API)
+    axios
+      .get<{ _id: string; name: string; players: string[] }[]>(
+        `${import.meta.env.VITE_BACKEND_URL}/api/room`
+      )
+      .then((res) => {
+        setRooms(res.data.map(transformRoom));
+      })
+      .catch((err) => {
         console.error("Error fetching rooms:", err);
-      }
+      });
+
+    // 2. Listen for real-time socket events
+    const handleRoomCreated = (room: any) => {
+      setRooms((prev) => {
+        const exists = prev.some((r) => r.id === room._id);
+        if (exists) return prev; // avoid duplicates
+        return [transformRoom(room), ...prev];
+      });
     };
 
-    fetchRooms();
-
-    socket.on("roomCreated", (newRoom: { _id: string; name: string; players: string[] }) => {
-      const transformed: RoomCardData = {
-        id: newRoom._id,
-        title: newRoom.name,
-        host: newRoom.players?.[0] || "Unknown Host",
-        hostAvatar: undefined,
-        participants: newRoom.players?.length ?? 0,
-        maxParticipants: 10,
-        status: "waiting",
-        difficulty: "Easy",
-        timeLeft: undefined,
-        platforms: ["Web"],
-      };
-      setRooms((prev) => [transformed, ...prev]);
-    });
-
-    socket.on("roomUpdated", (updatedRoom: { _id: string; name: string; players: string[] }) => {
-      const transformed: RoomCardData = {
-        id: updatedRoom._id,
-        title: updatedRoom.name,
-        host: updatedRoom.players?.[0] || "Unknown Host",
-        hostAvatar: undefined,
-        participants: updatedRoom.players?.length ?? 0,
-        maxParticipants: 10,
-        status: "waiting",
-        difficulty: "Easy",
-        timeLeft: undefined,
-        platforms: ["Web"],
-      };
+    const handleRoomUpdated = (room: any) => {
       setRooms((prev) =>
-        prev.map((r) => (r.id === updatedRoom._id ? transformed : r))
+        prev.map((r) => (r.id === room._id ? transformRoom(room) : r))
       );
-    });
+    };
 
+    socket.on("roomCreated", handleRoomCreated);
+    socket.on("roomUpdated", handleRoomUpdated);
+
+    // 3. Cleanup on unmount
     return () => {
-      socket.off("roomCreated");
-      socket.off("roomUpdated");
+      socket.off("roomCreated", handleRoomCreated);
+      socket.off("roomUpdated", handleRoomUpdated);
     };
   }, []);
 
   const handleJoinRoom = (roomId: string) => {
-    const room = rooms.find(r => r.id === roomId);
+    const room = rooms.find((r) => r.id === roomId);
     if (room) {
       toast({
         title: "Joining Room",
@@ -119,9 +76,15 @@ export default function Dashboard() {
     });
   };
 
-  const filteredRooms = rooms.filter(room =>
-    room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    room.host.toLowerCase().includes(searchQuery.toLowerCase())
+  // Optional: Optimistic UI update when creating room from this dashboard
+  const handleCreateRoom = (newRoom: any) => {
+    setRooms((prev) => [transformRoom(newRoom), ...prev]);
+  };
+
+  const filteredRooms = rooms.filter(
+    (room) =>
+      room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      room.host.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -148,42 +111,22 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-3">
               <JoinRoomModal onJoinRoom={handleJoinRoomByCode} />
-              <CreateRoomModal
-                onCreateRoom={(newRoom) =>
-                  setRooms([
-                    {
-                      id: newRoom._id,
-                      title: newRoom.name,
-                      host: newRoom.players?.[0] || "Unknown Host",
-                      hostAvatar: undefined,
-                      participants: newRoom.players?.length ?? 0,
-                      maxParticipants: 10,
-                      status: "waiting",
-                      difficulty: "Easy",
-                      timeLeft: undefined,
-                      platforms: ["Web"],
-                    },
-                    ...rooms,
-                  ])
-                }
-              />
+              <CreateRoomModal onCreateRoom={handleCreateRoom} />
             </div>
           </div>
 
           {/* Rooms Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRooms.map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                onJoin={handleJoinRoom}
-              />
+              <RoomCard key={room.id} room={room} onJoin={handleJoinRoom} />
             ))}
           </div>
 
           {filteredRooms.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-muted-foreground text-lg mb-4">No rooms found</div>
+              <div className="text-muted-foreground text-lg mb-4">
+                No rooms found
+              </div>
               <p className="text-sm text-muted-foreground">
                 {searchQuery
                   ? "Try adjusting your search"
