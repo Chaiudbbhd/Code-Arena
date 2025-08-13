@@ -19,6 +19,9 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rooms, setRooms] = useState<RoomCardData[]>([]);
 
+  console.log("Backend URL:", import.meta.env.VITE_BACKEND_URL);
+
+
   useEffect(() => {
     // 1. Initial fetch from backend (REST API)
     axios
