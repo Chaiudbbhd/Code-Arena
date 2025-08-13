@@ -66,17 +66,23 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
     }
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/room/create`,
-        {
-          title: formData.title,
-          difficulty: formData.difficulty,
-          maxParticipants: parseInt(formData.maxParticipants),
-          timer: formData.timer,
-          platforms: formData.platforms,
-          host: "You", // Or get from auth/session
-        }
-      );
+      interface CreateRoomResponse {
+        room: any; // Replace 'any' with your actual room type if available
+      }
+
+      const res = await axios.post<CreateRoomResponse>(
+  `${import.meta.env.VITE_BACKEND_URL}/api/room/create`,
+  {
+    name: formData.title,            // <-- changed here
+    difficulty: formData.difficulty,
+    maxParticipants: parseInt(formData.maxParticipants),
+    timer: parseInt(formData.timer),
+    platforms: formData.platforms,
+    host: "You",
+  }
+);
+
+
 
       if (onCreateRoom) {
         onCreateRoom(res.data.room); // immediate UI update if needed
