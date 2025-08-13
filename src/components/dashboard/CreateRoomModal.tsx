@@ -23,7 +23,20 @@ import { Plus, Users, Clock, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CreateRoomModalProps {
-  onCreateRoom?: (roomData: any) => void;
+  onCreateRoom?: (room: RoomData) => void;
+}
+
+// Define the room type exactly like your backend Room model
+export interface RoomData {
+  _id: string;
+  title: string;
+  difficulty: string;
+  maxParticipants: number;
+  timer: number;
+  platforms: string[];
+  host: string;
+  participants: number;
+  status: string;
 }
 
 export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
@@ -35,9 +48,10 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
     timer: "",
     platforms: [] as string[],
   });
+
   const { toast } = useToast();
 
-  const platforms = [
+  const platformsList = [
     { id: "leetcode", name: "LeetCode" },
     { id: "gfg", name: "GeeksforGeeks" },
     { id: "codechef", name: "CodeChef" },
@@ -66,27 +80,19 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
     }
 
     try {
-      interface CreateRoomResponse {
-        room: any; // Replace 'any' with your actual room type if available
-      }
+      const res = await axios.post<{ room: RoomData }>(
+        `${import.meta.env.VITE_BACKEND_URL}/api/room/create`,
+        {
+          title: formData.title, // ✅ must match backend
+          difficulty: formData.difficulty,
+          maxParticipants: parseInt(formData.maxParticipants),
+          timer: parseInt(formData.timer),
+          platforms: formData.platforms,
+          host: "You",
+        }
+      );
 
-      const res = await axios.post<CreateRoomResponse>(
-  `${import.meta.env.VITE_BACKEND_URL}/api/room/create`,
-  {
-    name: formData.title,            // <-- changed here
-    difficulty: formData.difficulty,
-    maxParticipants: parseInt(formData.maxParticipants),
-    timer: parseInt(formData.timer),
-    platforms: formData.platforms,
-    host: "You",
-  }
-);
-
-
-
-      if (onCreateRoom) {
-        onCreateRoom(res.data.room); // immediate UI update if needed
-      }
+      onCreateRoom?.(res.data.room);
 
       toast({
         title: "Room Created!",
@@ -101,11 +107,11 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
         timer: "",
         platforms: [],
       });
-    } catch (error) {
-      console.error("Error creating room:", error);
+    } catch (err: any) {
+      console.error("Error creating room:", err);
       toast({
         title: "Error",
-        description: "Failed to create room.",
+        description: err?.response?.data?.error || "Failed to create room.",
         variant: "destructive",
       });
     }
@@ -119,6 +125,7 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
           Create Room
         </Button>
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -143,6 +150,7 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            {/* Difficulty */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Target className="h-4 w-4" />
@@ -166,6 +174,7 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
               </Select>
             </div>
 
+            {/* Max Players */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -191,6 +200,7 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
             </div>
           </div>
 
+          {/* Timer */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -215,14 +225,12 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
             </Select>
           </div>
 
+          {/* Platforms */}
           <div className="space-y-3">
             <Label>Platforms</Label>
             <div className="grid grid-cols-2 gap-3">
-              {platforms.map((platform) => (
-                <div
-                  key={platform.id}
-                  className="flex items-center space-x-2"
-                >
+              {platformsList.map((platform) => (
+                <div key={platform.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={platform.id}
                     checked={formData.platforms.includes(platform.id)}
@@ -230,10 +238,7 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
                       handlePlatformChange(platform.id, checked as boolean)
                     }
                   />
-                  <Label
-                    htmlFor={platform.id}
-                    className="text-sm font-normal cursor-pointer"
-                  >
+                  <Label htmlFor={platform.id} className="text-sm font-normal cursor-pointer">
                     {platform.name}
                   </Label>
                 </div>
@@ -241,13 +246,9 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
             </div>
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              className="flex-1"
-            >
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" variant="accent" className="flex-1">
