@@ -79,6 +79,15 @@ export function CreateRoomModal({ onCreateRoom }: CreateRoomModalProps) {
       return;
     }
 
+      console.log("Creating room with data:", {
+    title: formData.title,
+    difficulty: formData.difficulty,
+    maxParticipants: parseInt(formData.maxParticipants),
+    timer: parseInt(formData.timer),
+    platforms: formData.platforms,
+    host: "You",
+  });
+
     try {
       const res = await axios.post<{ room: RoomData }>(
         `${import.meta.env.VITE_BACKEND_URL}/api/room/create`,
